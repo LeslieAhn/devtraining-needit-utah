@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="29f1153cc3840750464ef64d0501310f" extends="task" label="inquiry_case" max_length="40" name="x_58872_needit_inquiry_case" type="collection">
+        <element label="Caller ID" max_length="32" name="caller_id" reference="sys_user" type="reference"/>
+        <element label="Mm" max_length="50" name="mm" type="integer"/>
+    </element>
+</database>

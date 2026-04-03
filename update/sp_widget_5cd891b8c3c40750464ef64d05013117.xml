@@ -1,0 +1,485 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $location) {
+	var c = this;
+	var isFirstLoad = true;
+
+	// 核心：加载数据
+	c.loadData = function() {
+		c.data.searchKeyword = $location.search().keyword || '';
+		if (!isFirstLoad) {
+			c.data.currentPage = 1;
+		}
+		return c.server.update();
+	};
+
+	// 搜索
+	c.search = function() {
+		if (c.data.searchKeyword && c.data.searchKeyword.trim() !== '') {
+			$location.search('keyword', c.data.searchKeyword.trim());
+		} else {
+			$location.search('keyword', null);
+		}
+	};
+
+	// 回车搜索
+	c.enterSearch = function(event) {
+		if (event.keyCode === 13) {
+			c.search();
+		}
+	};
+
+	// 分页：上一页
+	c.prevPage = function() {
+		if (c.data.currentPage > 1) {
+			c.data.currentPage--;
+			c.server.update();
+		}
+	};
+
+	// 分页：下一页
+	c.nextPage = function() {
+		if (c.data.currentPage < c.data.totalPage) {
+			c.data.currentPage++;
+			c.server.update();
+		}
+	};
+
+	// 监听URL变化（搜索联动）
+	$scope.$on('$locationChangeSuccess', function() {
+		if (!isFirstLoad) {
+			c.loadData();
+		}
+	});
+
+	// 状态样式映射
+	$scope.getStateClass = function(stateValue) {
+		if (stateValue == '1') return 'state-pending'; // 未处理-红
+		if (stateValue == '2') return 'state-processing'; // 正在处理-黄
+		if (stateValue == '3') return 'state-done'; // 完了-绿
+		return '';
+	};
+
+	// 优先级样式映射
+	$scope.getPriorityClass = function(priorityValue) {
+		if (priorityValue == '1') return 'priority-high'; // 高-红
+		if (priorityValue == '2') return 'priority-medium'; // 中-黄
+		if (priorityValue == '3') return 'priority-low'; // 低-绿
+		return '';
+	};
+
+	// 初始化
+	c.loadData().then(function() {
+		isFirstLoad = false;
+	});
+	// 新增：跳转到新建案件页面
+	c.goToNewCase = function() {
+		// 替换为你的新建页面ID
+		$location.path('/nav_to.do?uri=u_inquiry_case.do?sys_id=-1&sysparm_query=');
+	};
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css>/* 全局容器 */
+.inquiry-system-container {
+  padding: 20px;
+  font-family: "Microsoft YaHei", sans-serif;
+  background-color: #f5f5f5;
+  min-height: 100vh;
+}
+
+/* 面包屑 */
+.breadcrumb {
+  margin-bottom: 20px;
+  font-size: 16px;
+  color: #666;
+}
+.breadcrumb a {
+  color: #337ab7;
+  text-decoration: none;
+}
+
+/* 主内容布局：左右分栏 */
+.main-content {
+  display: flex;
+  gap: 20px;
+}
+
+/* 左侧列表区域 */
+.left-section {
+  flex: 3;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 搜索框 */
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.search-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.search-btn {
+  padding: 10px 20px;
+  background-color: #337ab7;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* 表格样式 */
+.case-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+.table-header {
+  background-color: #337ab7;
+  color: #fff;
+}
+.case-table th, .case-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+}
+.case-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+.no-data {
+  text-align: center;
+  padding: 30px !important;
+  color: #999;
+}
+
+/* 状态/优先级颜色 */
+.status-tag, .priority-tag {
+  font-weight: bold;
+}
+.state-pending, .priority-high { color: #d9534f; }
+.state-processing, .priority-medium { color: #f0ad4e; }
+.state-done, .priority-low { color: #5cb85c; }
+
+/* 分页 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+.page-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.page-btn:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  color: #999;
+}
+.page-info {
+  font-size: 14px;
+  color: #666;
+}
+
+/* 右侧侧边栏 */
+.right-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 新规按钮 */
+.new-btn {
+  padding: 15px;
+  background-color: #5cb85c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* 待办任务面板 */
+.task-panel {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.task-panel h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #333;
+}
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+.task-item:last-child {
+  border-bottom: none;
+}
+.badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+}
+.badge-red {
+  background-color: #d9534f;
+}
+.badge-zero {
+  background-color: #ccc;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>inquiry_management_list</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>调查查询管理列表</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+    // 每页显示条数
+    var pageSize = 10;
+    data.pageSize = pageSize;
+
+    // 1. 接收前端参数
+    data.currentPage = (input && input.currentPage) ? parseInt(input.currentPage) : 1;
+    data.searchKeyword = (input && input.searchKeyword) ? input.searchKeyword : '';
+
+    // 2. 初始化GlideRecord，查询自定义表
+    var gr = new GlideRecord('x_58872_needit_inquiry_case');
+
+    // 3. 处理搜索条件：关键词模糊匹配 编号/标题/概要
+    if (data.searchKeyword) {
+        var qc = gr.addQuery('number', 'CONTAINS', data.searchKeyword);
+        qc.addOrCondition('short_description', 'CONTAINS', data.searchKeyword);
+        qc.addOrCondition('description', 'CONTAINS', data.searchKeyword);
+    }
+
+    // 4. 排序：按创建时间倒序
+    gr.orderByDesc('sys_created_on');
+
+    // 5. 查总条数，计算总页数
+    gr.query();
+    data.totalCount = gr.getRowCount();
+    data.totalPage = data.totalCount > 0 ? Math.ceil(data.totalCount / pageSize) : 1;
+
+    // 6. 分页查询
+    var firstRow = (data.currentPage - 1) * pageSize;
+    var lastRow = firstRow + pageSize;
+    gr.chooseWindow(firstRow, lastRow);
+    gr.query();
+
+    // 7. 组装列表数据
+    data.caseList = [];
+    while (gr.next()) {
+        data.caseList.push({
+            caseNumber: gr.getValue('number'),
+            title: gr.getValue('short_description'),
+            summary: gr.getValue('description'),
+            // 状态：值+显示名，用于颜色
+            stateValue: gr.getValue('state'),
+            stateLabel: gr.getDisplayValue('state'),
+            // 优先级：值+显示名，用于颜色
+            priorityValue: gr.getValue('priority'),
+            priorityLabel: gr.getDisplayValue('priority'),
+            // 提交者
+            submitter: gr.getDisplayValue('caller_id'),
+            // 时间：只取年月日
+            submitTime: gr.getValue('sys_created_on').split(' ')[0],
+            dueDate: gr.getValue('due_date') ? gr.getValue('due_date').split(' ')[0] : '-'
+        });
+    }
+
+    // 8. 【侧边栏待办统计】查询当前用户待办数据
+    var userId = gs.getUserID();
+
+    // 委托/Case：当前用户待办的u_inquiry_case（状态=未处理/正在处理）
+    var grCase = new GlideRecord('x_58872_needit_inquiry_case');
+    grCase.addQuery('assigned_to', userId);
+    grCase.addQuery('state', 'IN', ['1', '2']); // 未处理、正在处理
+    grCase.query();
+    data.caseCount = grCase.getRowCount();
+
+    // 个人任务/Per Task：当前用户待办的task
+    var grPerTask = new GlideRecord('task');
+    grPerTask.addQuery('assigned_to', userId);
+    grPerTask.addQuery('active', true);
+    grPerTask.query();
+    data.perTaskCount = grPerTask.getRowCount();
+
+    // 团队任务/Group Task：当前用户所在组的待办task
+    var grGroupTask = new GlideRecord('task');
+    grGroupTask.addQuery('assignment_groupIN', gs.getUser().getMyGroups());
+    grGroupTask.addQuery('active', true);
+    grGroupTask.query();
+    data.groupTaskCount = grGroupTask.getRowCount();
+
+    // 问卷调查/Survey：当前用户待办的survey_instance
+    var grSurvey = new GlideRecord('task');
+    grSurvey.addQuery('user', userId);
+    grSurvey.addQuery('state', 'requested');
+    grSurvey.query();
+    data.surveyCount = grSurvey.getRowCount();
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-04-02 03:36:21</sys_created_on>
+        <sys_id>5cd891b8c3c40750464ef64d05013117</sys_id>
+        <sys_mod_count>7</sys_mod_count>
+        <sys_name>调查查询管理列表</sys_name>
+        <sys_package display_value="NeedIt" source="x_58872_needit">6ead8e780f603200cd674f8ce1050ed1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="NeedIt">6ead8e780f603200cd674f8ce1050ed1</sys_scope>
+        <sys_update_name>sp_widget_5cd891b8c3c40750464ef64d05013117</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-04-02 05:23:31</sys_updated_on>
+        <template><![CDATA[<div class="inquiry-system-container">
+  <!-- 面包屑导航 -->
+  <div class="breadcrumb">
+    <a href="javascript:void(0)">调查查询系统</a>
+    <span> > </span>
+    <span>管理列表</span>
+  </div>
+
+  <div class="main-content">
+    <!-- 左侧：列表区域 -->
+    <div class="left-section">
+      <!-- 搜索框 -->
+      <div class="search-box">
+        <input 
+          type="text" 
+          class="search-input" 
+          ng-model="c.data.searchKeyword" 
+          ng-keydown="c.enterSearch($event)"
+          placeholder="请输入检索关键字（编号/标题/概要等）"
+        >
+        <button class="search-btn" ng-click="c.search()">
+          ]]>🔍
+<![CDATA[        </button>
+      </div>
+
+      <!-- 数据表格 -->
+      <table class="case-table">
+        <thead>
+          <tr class="table-header">
+            <th>案例编号</th>
+            <th>标题</th>
+            <th>调查查询请求概要</th>
+            <th>状态</th>
+            <th>优先级</th>
+            <th>提交者</th>
+            <th>提交时间</th>
+            <th>截止日期</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="item in c.data.caseList" ng-if="c.data.caseList && c.data.caseList.length > 0">
+            <td>{{item.caseNumber}}</td>
+            <td>{{item.title}}</td>
+            <td>{{item.summary}}</td>
+            <td>
+              <span class="status-tag" ng-class="getStateClass(item.stateValue)">
+                {{item.stateLabel}}
+              </span>
+            </td>
+            <td>
+              <span class="priority-tag" ng-class="getPriorityClass(item.priorityValue)">
+                {{item.priorityLabel}}
+              </span>
+            </td>
+            <td>{{item.submitter}}</td>
+            <td>{{item.submitTime}}</td>
+            <td>{{item.dueDate}}</td>
+          </tr>
+          <tr ng-if="!c.data.caseList || c.data.caseList.length === 0">
+            <td colspan="8" class="no-data">暂无数据</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 分页 -->
+      <div class="pagination">
+        <button class="page-btn" ng-disabled="c.data.currentPage <= 1" ng-click="c.prevPage()">
+          上一页
+        </button>
+        <span class="page-info">{{c.data.currentPage}} / {{c.data.totalPage}} 页</span>
+        <button class="page-btn" ng-disabled="c.data.currentPage >= c.data.totalPage" ng-click="c.nextPage()">
+          下一页
+        </button>
+      </div>
+    </div>
+
+    <!-- 右侧：侧边栏 -->
+    <div class="right-section">
+      <!-- 新规按钮 -->
+      <button class="new-btn" ng-click="c.goToNewCase()">
+        新规
+      </button>
+
+      <!-- 未完成的业务 -->
+      <div class="task-panel">
+        <h3>未完成的业务</h3>
+        <div class="task-item">
+          <span>委托/Case</span>
+          <span class="badge" ng-class="c.data.caseCount > 0 ? 'badge-red' : 'badge-zero'">
+            {{c.data.caseCount}}
+          </span>
+        </div>
+        <div class="task-item">
+          <span>个人任务/Per Task</span>
+          <span class="badge badge-zero">{{c.data.perTaskCount}}</span>
+        </div>
+        <div class="task-item">
+          <span>团队任务/Group Task</span>
+          <span class="badge badge-zero">{{c.data.groupTaskCount}}</span>
+        </div>
+        <div class="task-item">
+          <span>问卷调查/Survey</span>
+          <span class="badge badge-zero">{{c.data.surveyCount}}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>5cd891b8c3c40750464ef64d05013117</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-04-02 03:36:20</sys_created_on>
+        <sys_id>d8f85978c3c40750464ef64d05013173</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-04-02 03:36:20</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>
